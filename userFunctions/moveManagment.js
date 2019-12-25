@@ -4,10 +4,10 @@ const Admin = require('../models/Admin');
 const MoveMedia = require('../models/MoveMedia');
 const axios = require('axios');
 const provider = require('../validators/userProvider');
+const myPort = require('../serial/base');
 
 
-
-function play(idSession, idMedia, path) {
+function play(idSession, idMedia) {
     return new Promise((resolve, reject) => {
         let userId = null;
         let isAdmin = false;
@@ -31,13 +31,15 @@ function play(idSession, idMedia, path) {
                 let flow = media.data[key];
                 obj.data.push({moduleName: flow.moduleName, duf: flow.buf})
             }
-            return axios.post(path, obj);
-        }).then(result => {
-            if (result)
-                resolve("Data sent to path");
+            myPort.write(media.data, (err) => {
+                if (err) {
+                    reject(err.toString());
+                }
+                resolve("ok");
+            })
         }).catch(err => {
             console.log(err);
-            reject(err);
+            reject(err.toString());
         })
     })
 }

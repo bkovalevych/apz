@@ -4,11 +4,12 @@ const dotenv = require('dotenv');
 dotenv.config();
 const dataUser = require('../userFunctions/dataUser');
 
+
 class TemplateRoute {
     init(idSession) {
         return new Promise((resolve, reject) => {
+            let parent = this;
             if (this.author == null) {
-                let parent = this;
                 dataUser(idSession)
                     .then(result => {
                         parent.author = result['user'].toString();
@@ -43,23 +44,20 @@ class TemplateRoute {
     * }
     * */
     showAll(req, res) {
-        let tempRoute = this;
-        let form = new formidable.IncomingForm();
-        form.parse(req, function (err, fields, files) {
-            if (err) console.log(`${tempRoute.name} error in showAll.formParse\n message:`, err);
-            let limit = fields.limit || 100;
-            let skip = fields.skip || 0;
-            let sortParameter = fields.sortParameter || {};
-            let filter = fields.filter || {};
-            tempRoute.collection.find(filter).sort(sortParameter).skip(skip).limit(limit)
-                .then(result => {
-                    res.json(result);
-                })
-                .catch(err => {
-                    console.log(`${tempRoute.name} error in showAll.formParse.collection.find\n message:`, err)
-                    res.json({errors: err})
-                })
+        let fields = req.body;
+        let limit = fields.limit || 100;
+        let skip = fields.skip || 0;
+        let sortParameter = fields.sortParameter || {};
+        let filter = fields.filter || {};
+        this.collection.find(filter).sort(sortParameter).skip(skip).limit(limit).
+        then(result => {
+            res.json({data: result});
+        }).
+        catch(err => {
+            console.log(`${this.name} error in showAll.formParse.collection.find\n message:`, err)
+            res.json({errors: err})
         })
+
     }
 
      /*
@@ -70,40 +68,29 @@ class TemplateRoute {
      * output: id
      **/
 
-     add(req, res, otherOperation = null) {
+     add(req, res, next) {
         let tempRoute = this;
-        let form = new formidable.IncomingForm();
-        form.parse(req, function (err, fields, files) {
-            if (typeof(fields.object) === typeof("")) {
-                fields.object = JSON.parse(fields.object);
+        let fields = req.body;
+
+
+        tempRoute.init(fields['idSession']).
+        then(returnedValue => {
+            tempRoute.author = returnedValue;
+            if (req.otherOperation != null) {
+                req.otherOperation(fields)
             }
-            fields.object["pathFiles"] = [];
-            tempRoute.init(fields['idSession']).
-            then(returnedValue => {
-                tempRoute.author = returnedValue;
-                    for (let fileKey in files) {
-                        let oldPath = files[fileKey].path;
-                        let name = files[fileKey].name;
-                        let newPath = `${tempRoute.projectPath}/${tempRoute.author}/${fileKey}`;
-                        fields.object["pathFiles"].push(`${newPath}/${name}`);
-                        tempRoute._readAndAppend(oldPath, newPath, name);
-                    }
-
-                    if (otherOperation != null) {
-                        otherOperation(fields)
-                    }
+            return tempRoute.collection.create(fields)
+        }).then(result => {
+            req.folder = tempRoute.name;
+            req.mainData = {data: result};
+            next();
+        }).catch(err => {
+            console.log({errors: err, message: `Collection ${tempRoute.name}, trouble with adding`});
+            res.json({errors: err, message: `Collection ${tempRoute.name}, trouble with adding`});
+        });
+     }
 
 
-                    return tempRoute.collection.create(fields.object).then(result => {
-                        res.json({errors: null, data: result._id.toString()})
-                    }).catch(err => {
-                            res.json({errors: err, message: `Collection ${tempRoute.name}, trouble with adding`});
-                            console.log({errors: err, message: `Collection ${tempRoute.name}, trouble with adding`});
-                    });
-                }).then(err => {console.log(err); res.json(err);});
-
-        })
-    }
 
      /*
      * input: req {

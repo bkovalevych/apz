@@ -3,7 +3,7 @@ const Schema = mongoose.Schema;
 
 // Create Schema
 const UserSchema = new Schema({
-
+  date: {type: Date, default: Date.now},
   nickname: {
     type: String,
     required: [true, 'Your nickname can not be blank']

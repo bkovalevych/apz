@@ -10,7 +10,8 @@ const Session = require('../models/Session');
 const Follower = require('../models/Follower');
 const RouteBuilder = require('../routes/template_route');
 const registerValidator = require('../validators/registerValidator');
-const fs = require('fs')
+const fs = require('fs');
+const tempRoute = require('./template_route');
 
 
 users.use(cors());
@@ -66,7 +67,7 @@ users.post('/register', (req, res) => {
                         }).catch(err => {
                             console.log(err);
                         });
-                        res.send(user.email + ' registered!')
+                        res.send({data: user.email + ' registered! Check your email!'})
                     })
                     .catch(err => {
                         res.json(err)
@@ -79,7 +80,7 @@ users.post('/register', (req, res) => {
        res.json({errors: err})
     });
 
-})
+});
 
 users.post('/change-password', (req, res) => {
   User.findOne({
@@ -111,8 +112,9 @@ User.findOne({activationToken: req.params.activationToken}).then(na_user => {if(
       User.updateOne({activationToken: req.params.activationToken},{$set: { activationToken:"", active:true}})
       .then(user => {
         // res.json({success: user.nickname + ' activated'})
-        fs.mkdir(process.env.STORAGE_ROOT, err=> console.log(err))
-        res.redirect('http://localhost:3000/');
+        fs.mkdir(process.env.STORAGE_ROOT, err=> console.log(err));
+
+        res.send(`${user.email} is activated`);
       })
       .catch(err => {
         res.send('error: '+ err)
@@ -123,7 +125,15 @@ User.findOne({activationToken: req.params.activationToken}).then(na_user => {if(
 });
 
 
+users.post('/', (req, res) => {
+    let typeRoute = new tempRoute(User, "User");
+    typeRoute.showAll(req, res);
+});
 
+users.put('/', (req, res) => {
+    let typeRoute = new tempRoute(User, "User");
+    typeRoute.update(req, res);
+});
 
 
 
@@ -144,9 +154,7 @@ users.post('/logout', (req, res) => {
 
 users.post('/login', (req, res) => {
   if(!req.body.email || !req.body.password){
-    res.json({errors: {fieldValidation: {
-      message: 'All fields must be filled'
-    }, message: 'An error occured'}})
+    res.json({errors: 'All fields must be filled'})
   }
   User.findOne({
     $or: [
@@ -170,27 +178,32 @@ users.post('/login', (req, res) => {
             let sessionData = {'user': user._id, data: {key: "email", value: user.email}};
             Session.create(sessionData)
                 .then(resultSession => {
-                  let token = jwt.sign({_id: user._id.toString(), nickname: user.nickname, email: user.email},
+                    console.log(`user ${user.nickname} logged with sessionIp ${resultSession._id.toString()}`);
+                  let token = jwt.sign({
+                          _id: user._id.toString(),
+                          nickname: user.nickname,
+                          email: user.email,
+                          session: resultSession._id.toString()},
                       process.env.SECRET_KEY, {
                         expiresIn: 1440
                       });
-                  let obj = {errors: null, data: {id: resultSession._id.toString(), token: token}};
-                  res.json(obj)
+                  let obj = {errors: null, data: token};
+                  res.json(obj);
                 })
-                .catch(error => console.log(error));
+                .catch(error => {console.log(error); res.json({errors: error})});
           } else {
-            res.json({errors: {activation: {message:'User is not activated'}, message: 'An error occured'}})
+            res.json({errors: 'User is not activated'})
           }
         } else {
-          res.json({ errors: {existence: {message:'Incorrect password'}, message: 'An error occured'} })
+          res.json({ errors: 'Incorrect password'})
         }
+      } else {
+          res.json({errors: "user not found"});
       }
     })
     .catch(err => {
-      res.json(err)
+      res.json({errors: err})
     })
-
-
 });
 
 

@@ -1,5 +1,8 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+
+
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv'); // .env - это файл, в котором можно хранить скрыиые переменные (ключ апи)
 dotenv.config();
@@ -12,12 +15,24 @@ const https = require('https');
 const host = '127.0.0.1';
 app.use(bodyParser.json())
 app.use(cors())
-app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.urlencoded({ extended: true }))
+
+
+
+const rand = () => {
+  return Math.floor(Math.random() * 40);
+};
+
+
+myPort.on('error', (err) => {
+  console.error(err);
+})
+
 
 mongoose
   .connect(
     process.env.mongoURI, // mongodb://localhost:27017/имя_бд
-    { useNewUrlParser: true}
+    {useNewUrlParser: true}
   )
   .then(() => console.log('MongoDB Connected'))
   .catch(err => console.log(err));
@@ -29,6 +44,9 @@ const followers = require('./routes/followers');
 const admin = require('./routes/admin');
 const groupsM = require('./routes/groups');
 
+
+
+app.use(express.static('public'))
 app.use('/admin', admin);
 app.use('/moderator', move_base);
 app.use('/users', Users);
@@ -36,7 +54,15 @@ app.use('/move', move_media);
 app.use('/followers', followers);
 app.use('/groups', groupsM);
 
+app.get('/get', (req, res) => {
 
+    let dt = `83 ${rand()} ${rand()} 10\n`;
+    myPort.write(dt, (err) => {
+      if (err) return console.log('Error on write: ', err.message);
+      console.log('message written')
+    });
+    res.send("ok");
+});
 
 app.listen( port, function() {
   console.log('Server is running on port: ' + port)

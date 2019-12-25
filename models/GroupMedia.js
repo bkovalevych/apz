@@ -6,6 +6,8 @@ const GroupMediaSchema = new Schema({
     creator: {type: Schema.Types.ObjectId, ref: 'User'},
     mode: String,
     name: {type: String, unique: true},
+    description: String,
+    date: {type: Date, default: Date.now},
     modules: [{type: Schema.Types.ObjectId, ref: 'MoveBase'}],
     usersNumber: {type: Schema.Types.Number, default: 0},
     currentSender: Schema.Types.ObjectId,
